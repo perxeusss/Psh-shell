@@ -1,14 +1,17 @@
-#include "../include/zash.h"
 #include<string.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
 
+#include "../include/main.h"
+#include "../include/runner.h"
+#include "../include/parser.h"
+
 
 void shell_loop() {
 
     char *line = NULL;
-    int cap = 0 ;
+    size_t cap = 0 ;
 
     for(;;) {
 
@@ -29,8 +32,13 @@ void shell_loop() {
         if(line[0] == '\0') continue ;
 
         char norm[2048];
-        norm_and_and(line, norm, sizeof(norm)) ;
-       
+        norm_and_and(line, norm, sizeof(norm)) ;    
+        
+        if(!parse_shell_cmd(norm)) {
+            fprintf(stderr, "Syntax error\n");
+            continue ;
+        } 
+        run(norm) ;
     }
 }
 
