@@ -1,15 +1,13 @@
+#include "../include/execute.h"
+#include "../include/builtins.h"
+#include "../include/helpers.h"
+
 #include<unistd.h>
 #include<stdlib.h>
 #include<stdio.h>
 #include<string.h>
 #include<sys/wait.h>
 #include<fcntl.h>
-
-
-#include "../include/execute.h"
-#include "../include/builtins.h"
-#include "../include/helpers.h"
-
 
 #ifndef MAX_INFILES
 #  define MAX_INFILES   8
@@ -82,7 +80,7 @@ static pid_t run_single(const char *cmd, int in_fd, int out_fd, int wait_fg, int
 
     pid_t pid = fork() ;
 
-    if(pid == 0 ) { 
+    if( pid == 0 ) { 
         if(pg_lead > 0) setpgid(0, pg_lead) ;
         else setpgid(0, 0) ;
 

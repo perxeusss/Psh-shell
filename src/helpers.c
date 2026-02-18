@@ -1,8 +1,10 @@
+#include "../include/runner.h"
+
+
 #include<unistd.h>
 #include<stdlib.h>
 #include<string.h>
 #include<stdio.h>
-#include "../include/runner.h"
 
 int my_strcmp(const char* str1, const char* str2) {
     // printf("%s\n" , str1 ) ;

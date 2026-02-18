@@ -1,19 +1,19 @@
+#include "../include/builtins.h"
+#include "../include/helpers.h"
+
+
 #include<string.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
 #include<sys/wait.h>
 
-#include "../include/builtins.h"
-#include "../include/helpers.h"
 
 static int split_words(char *line, char **args) {
     int n = 0; char *tok = strtok(line, " \t");
     while (tok && n < 64) { args[n++] = tok; tok = strtok(NULL, " \t"); }
     return n;
 }
-
-
 
 void norm_and_and(const char *in, char *out, size_t sz){
 
@@ -28,7 +28,7 @@ void norm_and_and(const char *in, char *out, size_t sz){
     out[j] = '\0';
 }
 
-int run(const char *line) {
+int run_sequence(const char *line) {
     char buf[2048] ;
     strcpy(buf, line) ;
     int n = (int)strlen(buf) ;
@@ -49,7 +49,6 @@ int run(const char *line) {
         cmd[cnt] = buf + st ;
         bg[cnt++] = 0 ;
     }
-
     for(int i = 0 ; i < cnt; i++) {
         char temp[1024] ;
         strncpy(temp, cmd[i], sizeof(temp)) ;
@@ -69,7 +68,7 @@ int run(const char *line) {
         int hard = !!(strchr(first, '|') || strchr(first, '>') || strchr(first, '<') || strchr(first, ';') );
 
         const char* built_in_commands[] = {"cd", "pwd", "echo", "env", "setenv", "unsetenv", "which", "exit"} ;
-        (void) bg ;
+        // (void) bg ;
         if(!hard) {
             int is_builtin = 0 ;   
 
