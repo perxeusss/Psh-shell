@@ -8,7 +8,6 @@
 #include<stdio.h>
 #include<stdlib.h>
 
-
 static void path_for_prompt(const shell_state *st, char buf[PATH_MAX]) {
     char cwd[PATH_MAX] ;
     if(getcwd(cwd, sizeof(cwd)) == NULL) {

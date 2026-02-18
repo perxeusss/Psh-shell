@@ -8,8 +8,6 @@
 #include <string.h>
 #include <unistd.h>
 
-
-
 void jobs_init(shell_state *st) {
     st -> next_job_id = 1 ;
     for(int i = 0 ; i < MAX_JOBS ; i++) {

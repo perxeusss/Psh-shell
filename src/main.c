@@ -17,11 +17,13 @@
 shell_state global_shell_state ;
 
 static void kill_all(shell_state *st) {
+    
     pid_t g = signals_get_fg_pgid();
     if (g > 0) kill(-g, SIGKILL);
+
     for (int i = 0; i < MAX_JOBS; i++) {
-        if (st->jobs[i].active) {
-            kill(-st->jobs[i].pgid, SIGKILL);
+        if (st -> jobs[i].active ) {
+            kill(-st -> jobs[i].pgid, SIGKILL);
         }
     }
 }
