@@ -1,6 +1,7 @@
 #include "../include/execute.h"
 #include "../include/builtins.h"
 #include "../include/helpers.h"
+#include "../include/signals.h"
 
 #include<unistd.h>
 #include<stdlib.h>
@@ -46,13 +47,13 @@ static int split_argv(char *cmd, char **argv, int max) {
     return argc ;
 }
 
-static pid_t run_single(const char *cmd, int in_fd, int out_fd, int wait_fg, int bg_detach_stdin, pid_t pg_lead) {
+static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_detach_stdin, pid_t pg_lead) {
 
     char *infiles[MAX_INFILES] ; int n_in = 0 ;
     char *outfiles[MAX_OUTFILES] ; int n_out = 0 ;
     int append [MAX_OUTFILES] ;
 
-    for(char *p = cmd ; p = strpbrk(p, "<>") ; ) {
+    for(char *p = cmd ; (p = strpbrk(p, "<>") ) ; ) {
         if(*p == '<') {
             *p++ = '\0' ;
             while(*p == ' ' || *p == '\t') p++ ;
@@ -77,6 +78,7 @@ static pid_t run_single(const char *cmd, int in_fd, int out_fd, int wait_fg, int
 
     char *argv[64] ;
     int argc = split_argv(cmd, argv, 64) ;
+    (void)argc ;
 
     pid_t pid = fork() ;
 
@@ -128,7 +130,7 @@ static pid_t run_single(const char *cmd, int in_fd, int out_fd, int wait_fg, int
             dup2(out_fd, STDOUT_FILENO) ;
             close(out_fd) ;
         }
-        if (strcmp(argv[0], "echo") == 0)      { command_echo(argv, NULL); _exit(0); }
+        if (strcmp(argv[0], "echo") == 0)  { command_echo(argv, NULL); _exit(0); }
         if (strcmp(argv[0], "pwd") == 0)  { command_pwd(); _exit(0); }
         if (strcmp(argv[0], "env") == 0)  { command_env(NULL); _exit(0); }
         if (strcmp(argv[0], "which") == 0)  { command_which(argv, NULL); _exit(0); }

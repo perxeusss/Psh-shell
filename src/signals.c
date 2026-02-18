@@ -15,6 +15,7 @@ static char fg_cmd[256] ;
 extern shell_state global_shell_state ;
 
 static void on_sigint(int sig) {
+    (void)sig ;
     pid_t pg = fg_pgid ;
 
     if(pg > 0) {
@@ -23,6 +24,7 @@ static void on_sigint(int sig) {
 }
 
 static void on_sigtstp(int sig) {
+    (void)sig ;
     pid_t pg = fg_pgid ;
 
     if(pg > 0) {

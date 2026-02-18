@@ -5,6 +5,8 @@
 
 #include<stdio.h>
 #include <sys/wait.h>
+#include <string.h>
+#include <unistd.h>
 
 
 
@@ -13,6 +15,9 @@ void jobs_init(shell_state *st) {
     for(int i = 0 ; i < MAX_JOBS ; i++) {
         st -> jobs[i].active = 0 ;
     }
+}
+static const char *name_of(const char *s) {
+    return s ? s : "";
 }
 
 int jobs_add(shell_state *st, pid_t pid, char *cmd) {

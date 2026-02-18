@@ -1,5 +1,7 @@
 #include "../include/builtins.h"
 #include "../include/helpers.h"
+#include "../include/runner.h"
+#include "../include/execute.h"
 
 
 #include<string.h>
@@ -108,7 +110,7 @@ int run_sequence(const char *line) {
 
         int wait_fg = !bg[i] ;
 
-        execute_command(&execbuf, wait_fg, &pid) ;
+        execute_command(execbuf, wait_fg, &pid) ;
     }
     return 1 ;
 }

@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
 
-SRC = src/main.c src/runner.c src/builtins.c src/helpers.c src/parser.c
+SRC = src/main.c src/runner.c src/builtins.c src/helpers.c src/parser.c src/history.c src/jobs.c src/signals.c src/prompt.c src/execute.c
 OBJ = $(SRC:.c=.o)
 
 TARGET = psh

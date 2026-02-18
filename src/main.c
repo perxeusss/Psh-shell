@@ -5,6 +5,7 @@
 #include "../include/jobs.h"
 #include "../include/prompt.h"  
 #include "../include/shell.h"
+#include "../include/history.h"
 
 
 #include<string.h>
@@ -13,8 +14,17 @@
 #include<unistd.h>
 #include<signal.h>
 
-extern shell_state global_shell_state ;
+shell_state global_shell_state ;
 
+static void kill_all(shell_state *st) {
+    pid_t g = signals_get_fg_pgid();
+    if (g > 0) kill(-g, SIGKILL);
+    for (int i = 0; i < MAX_JOBS; i++) {
+        if (st->jobs[i].active) {
+            kill(-st->jobs[i].pgid, SIGKILL);
+        }
+    }
+}
 
 void shell_loop() {
 
@@ -22,14 +32,15 @@ void shell_loop() {
     size_t cap = 0 ;
 
     for(;;) {
-
-        printf("Psh >") ;
+        jobs_check(&global_shell_state) ;
+        show_prompt(&global_shell_state);
         fflush(stdout) ;
 
         ssize_t n = getline(&line, &cap, stdin);
 
         if (n < 0) {
             printf("logout\n");
+            kill_all(&global_shell_state);
             break;
         }
 
@@ -37,7 +48,10 @@ void shell_loop() {
             line[--n] = '\0';
         }
 
+        jobs_check(&global_shell_state) ;
         if(line[0] == '\0') continue ;
+
+        history_add_if_needed(&global_shell_state, line) ;
 
         char norm[2048];
         norm_and_and(line, norm, sizeof(norm)) ;    
@@ -47,6 +61,7 @@ void shell_loop() {
             continue ;
         } 
         run_sequence(norm) ;
+        jobs_check(&global_shell_state) ;
     }
     free(line) ;
 }
@@ -57,7 +72,7 @@ int main() {
     global_shell_state.prev[0] = '\0';
     global_shell_state.log_count = 0;
 
-    jobs_intit(&global_shell_state);
+    jobs_init(&global_shell_state);
     signals_init() ;
 
     signal(SIGTTOU, SIG_IGN);
