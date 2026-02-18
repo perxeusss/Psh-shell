@@ -37,7 +37,8 @@ static bool output_redir(const char *s, size_t *i) {
     size_t save = *i;
     skip_ws(s, i);
     if (s[*i] != '>') { *i = save; return false; }
-    (*i)++;
+    if (s[*i + 1] == '>') (*i) += 2;
+    else (*i)++;
     if (!word(s, i)) {
         *i = save; return false;
     }

@@ -3,7 +3,6 @@
 #include "../include/runner.h"
 #include "../include/execute.h"
 
-
 #include<string.h>
 #include<stdio.h>
 #include<stdlib.h>
@@ -14,6 +13,7 @@
 static int split_words(char *line, char **args) {
     int n = 0; char *tok = strtok(line, " \t");
     while (tok && n < 64) { args[n++] = tok; tok = strtok(NULL, " \t"); }
+    args[n] = NULL ;
     return n;
 }
 
@@ -32,11 +32,12 @@ void norm_and_and(const char *in, char *out, size_t sz){
 
 int run_sequence(const char *line) {
     char buf[2048] ;
-    strcpy(buf, line) ;
+    strncpy(buf, line, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
     int n = (int)strlen(buf) ;
 
     char *cmd[128] ;
-    char bg[128];
+    char bg[128] = {0} ;
     int cnt = 0 , st = 0 ;
 
     for(int i = 0 ; i < n; i++) {
@@ -53,8 +54,10 @@ int run_sequence(const char *line) {
     }
     for(int i = 0 ; i < cnt; i++) {
         char temp[1024] ;
-        strncpy(temp, cmd[i], sizeof(temp)) ;
+        strncpy(temp, cmd[i], sizeof(temp) - 1) ;
         temp[sizeof(temp) - 1] = '\0' ;
+
+        if(!temp[0]) continue ;
         char *s = temp ;
 
         for(; *s == ' ' || *s == '\t'; s++) {}
@@ -71,11 +74,12 @@ int run_sequence(const char *line) {
 
         const char* built_in_commands[] = {"cd", "pwd", "echo", "env", "setenv", "unsetenv", "which", "exit"} ;
         // (void) bg ;
+        // printf("Command to run: %s\n", s) ;
         if(!hard) {
             int is_builtin = 0 ;   
 
-            for(int i = 0 ; i < 8 ; i++) {       
-                if(!strcmp(first, built_in_commands[i])) {
+            for(int j = 0 ; j < 8 ; j++) {       
+                if(!strcmp(first, built_in_commands[j])) {
 
                 is_builtin = 1;
 
@@ -87,8 +91,8 @@ int run_sequence(const char *line) {
                 int argc = split_words(temp, args);
 
                 if (argc == 0) continue;
-
-                    switch(i) {
+                // printf("Running built-in command: %s\n", args[0]) ;
+                    switch(j) {
                         case 0: command_cd(args) ; break ;
                         case 1: command_pwd() ; break ;
                         case 2: command_echo(args, NULL) ; break ;
@@ -103,6 +107,7 @@ int run_sequence(const char *line) {
             }
             if(is_builtin) continue ;
         }
+        // printf("Running command: %s\n", s) ;
         pid_t pid = -1 ;
         char execbuf[1024] ;
         my_strncpy(execbuf, s, sizeof(execbuf) - 1) ;

@@ -21,7 +21,7 @@
 static void trim(char *s) {
     int n = (int)strlen(s) ;
     while(n && (s[n - 1] == ' ' || s[n - 1] == '\t')) s[--n] = '\0' ;
-    while (*s == ' '|| *s == '\t') memmove(s, s + 1, strlen(s) ) ;
+    while (*s == ' '|| *s == '\t') memmove(s, s + 1, strlen(s) + 1 ) ;
 }
 
 static int split_argv(char *cmd, char **argv, int max) {
@@ -48,6 +48,8 @@ static int split_argv(char *cmd, char **argv, int max) {
 }
 
 static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_detach_stdin, pid_t pg_lead) {
+
+
 
     char *infiles[MAX_INFILES] ; int n_in = 0 ;
     char *outfiles[MAX_OUTFILES] ; int n_out = 0 ;
@@ -78,8 +80,11 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
 
     char *argv[64] ;
     int argc = split_argv(cmd, argv, 64) ;
-    (void)argc ;
 
+    if (argc == 0 || argv[0] == NULL) {
+        _exit(0);
+    }
+   
     pid_t pid = fork() ;
 
     if( pid == 0 ) { 
@@ -130,13 +135,13 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
             dup2(out_fd, STDOUT_FILENO) ;
             close(out_fd) ;
         }
-        if (strcmp(argv[0], "echo") == 0)  { command_echo(argv, NULL); _exit(0); }
-        if (strcmp(argv[0], "pwd") == 0)  { command_pwd(); _exit(0); }
-        if (strcmp(argv[0], "env") == 0)  { command_env(NULL); _exit(0); }
-        if (strcmp(argv[0], "which") == 0)  { command_which(argv, NULL); _exit(0); }
-
+        // if (strcmp(argv[0], "echo") == 0)  { command_echo(argv, NULL); _exit(0); }
+        // if (strcmp(argv[0], "pwd") == 0)  { command_pwd(); _exit(0); }
+        // if (strcmp(argv[0], "env") == 0)  { command_env(NULL); _exit(0); }
+        // if (strcmp(argv[0], "which") == 0)  { command_which(argv, NULL); _exit(0); }
+        // printf("Executing command in child: %s\n", argv[0]) ;
         execvp(argv[0], argv);
-        printf("Command not found!\n");
+        // printf("Command not found!\n");
         _exit(1);
     }
     if(pg_lead > 0) setpgid(pid, pg_lead) ;
@@ -144,7 +149,7 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
 
     if(wait_fg) {
         pid_t grp = (pg_lead > 0 ? pg_lead : pid);
-        signals_set_fg_pgid(grp, argv[0]);
+        signals_set_fg_pgid(grp, argv[0] ? argv[0] : "");
         tcsetpgrp(STDIN_FILENO, grp);
 
         int status;
@@ -159,6 +164,7 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
 
 int execute_command(char *line, int wait_fg, pid_t  *first_pid) {
 
+    // printf("Executing command line: %s\n", line) ;
     char* parts[16] ;
     int cnt = 0 ;
     char *save_ptr ;

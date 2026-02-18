@@ -29,6 +29,7 @@ static void kill_all(shell_state *st) {
 }
 
 void shell_loop() {
+    // printf("Welcome to Psh shell!\n") ;
 
     char *line = NULL;
     size_t cap = 0 ;
@@ -69,6 +70,7 @@ void shell_loop() {
 }
 
 int main() {
+    // printf("Starting Psh shell...\n") ;
     init_prompt(&global_shell_state);
 
     global_shell_state.prev[0] = '\0';
