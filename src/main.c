@@ -78,6 +78,7 @@ int main() {
 
     jobs_init(&global_shell_state);
     signals_init() ;
+    history_load(&global_shell_state); 
 
     signal(SIGTTOU, SIG_IGN);
     signal(SIGTTIN, SIG_IGN);

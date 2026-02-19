@@ -46,8 +46,8 @@ void signals_init() {
     sigemptyset(&sa_int.sa_mask);
     sigemptyset(&sa_tstp.sa_mask);
 
-    sa_int.sa_flags = SA_RESTART;
-    sa_tstp.sa_flags = SA_RESTART;
+    sa_int.sa_flags = 0;
+    sa_tstp.sa_flags = 0;
 
     sigaction(SIGINT, &sa_int, NULL);
     sigaction(SIGTSTP, &sa_tstp, NULL);

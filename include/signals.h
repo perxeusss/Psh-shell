@@ -6,5 +6,6 @@
 void signals_init() ;
 void signals_set_fg_pgid(pid_t pgid, const char *cmd) ;
 pid_t signals_get_fg_pgid() ;   
+void signals_handle_pending(void) ;
 
 #endif 

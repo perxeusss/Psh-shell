@@ -88,6 +88,7 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
     pid_t pid = fork() ;
 
     if( pid == 0 ) { 
+
         if(pg_lead > 0) setpgid(0, pg_lead) ;
         else setpgid(0, 0) ;
 
@@ -141,7 +142,7 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
         // if (strcmp(argv[0], "which") == 0)  { command_which(argv, NULL); _exit(0); }
         // printf("Executing command in child: %s\n", argv[0]) ;
         execvp(argv[0], argv);
-        // printf("Command not found!\n");
+        printf("Command not found!\n");
         _exit(1);
     }
     if(pg_lead > 0) setpgid(pid, pg_lead) ;
@@ -149,18 +150,24 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
 
     if(wait_fg) {
         pid_t grp = (pg_lead > 0 ? pg_lead : pid);
+        setpgid(pid, grp);
         signals_set_fg_pgid(grp, argv[0] ? argv[0] : "");
-        tcsetpgrp(STDIN_FILENO, grp);
 
+        tcsetpgrp(STDIN_FILENO, grp);
+        
         int status;
         waitpid(pid, &status, WUNTRACED);
 
+        if (WIFSIGNALED(status) && WTERMSIG(status) == SIGINT) {
+            write(STDOUT_FILENO, "\n", 1);  // clean newline after ^C
+        }
+        // signals_handle_pending must come BEFORE tcsetpgrp
+        signals_handle_pending();
         tcsetpgrp(STDIN_FILENO, getpgrp());
         signals_set_fg_pgid(-1, NULL);
     }
     return pid ;
 }
-
 
 int execute_command(char *line, int wait_fg, pid_t  *first_pid) {
 
@@ -190,7 +197,7 @@ int execute_command(char *line, int wait_fg, pid_t  *first_pid) {
             if(i + 1 < cnt) {
                 pipe(fds) ;
             }
-            pid_t p = run_single(parts[i], in_fd, (i == cnt - 1) ? STDOUT_FILENO : fds[1], wait_fg && i == cnt - 1, !wait_fg, pg) ;
+            pid_t p = run_single(parts[i], in_fd, (i == cnt - 1) ? STDOUT_FILENO : fds[1], 0, !wait_fg, pg);
             if(p > 0 && pg == -1) pg = p ;
             if(!i) first = p ;
             if(i + 1 < cnt ) {
@@ -200,6 +207,19 @@ int execute_command(char *line, int wait_fg, pid_t  *first_pid) {
             } 
         }
         if (wait_fg) { tcsetpgrp(STDIN_FILENO, getpgrp()); signals_set_fg_pgid(-1,NULL); }
+        if (wait_fg && pg > 0) {
+            int status;
+    
+            while (waitpid(-pg, &status, WUNTRACED) > 0) {
+                if (WIFSTOPPED(status)) break;      
+            }
+            if (WIFSIGNALED(status) && WTERMSIG(status) == SIGINT) {
+                write(STDOUT_FILENO, "\n", 1);
+            }
+            signals_handle_pending();
+            tcsetpgrp(STDIN_FILENO, getpgrp());
+            signals_set_fg_pgid(-1, NULL);
+        }
         if (first_pid) *first_pid = first;
     }
     return 0 ;
