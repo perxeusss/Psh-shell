@@ -8,6 +8,7 @@ management, job control, pipelines, signal handling, and persistent command hist
 - Built a POSIX-compliant Unix shell from scratch in C
 - Full foreground & background job control (Ctrl-C, Ctrl-Z, `&`)
 - Supports pipes, I/O redirection, background execution, and sequential commands
+- Dynamic prompt showing `user@hostname:path$` with live `~` home directory substitution
 - Uses process groups and terminal control (`setpgid`, `tcsetpgrp`)
 - Signal-safe design using `sigaction` without `SA_RESTART`
 - Environment variable expansion (`$VAR`) before execution
@@ -46,23 +47,49 @@ killing all background jobs before exiting.
 ### Example
 
 ```bash
-# Build and run
 make && ./psh
 
-# You'll see a prompt like:
-psh>
+# Dynamic prompt shows user, hostname, and current path
+perxeuss@hostname:~$
+
+# ~ substitution — home directory shown as ~
+perxeuss@hostname:~$ cd /tmp
+perxeuss@hostname:/tmp$ cd ~
+perxeuss@hostname:~$
 
 # Try a command
-psh> echo Hello World
+perxeuss@hostname:~$ echo Hello World
 Hello World
 
 # Run a pipeline
-psh> ls -la | grep ".c" | wc -l
+perxeuss@hostname:~$ ls -la | grep ".c" | wc -l
 9
 
 # Exit
-psh> exit
+perxeuss@hostname:~$ exit
 ```
+
+---
+
+## Dynamic Prompt
+
+The prompt is generated live on every command using real system calls:
+
+```
+perxeuss@hostname:~$
+perxeuss@hostname:~/projects$
+perxeuss@hostname:/tmp/build$
+```
+
+**Format:** `user@hostname:path$`
+
+- `user` — read from `$USER` environment variable
+- `hostname` — fetched via `gethostname()`
+- `path` — current working directory from `getcwd()`, with home directory replaced by `~`
+
+The `~` substitution works by comparing the current working directory against the
+shell's recorded home at startup. If the path starts with the home prefix, it is
+replaced with `~` — matching real shell behavior.
 
 ---
 
@@ -73,9 +100,9 @@ psh> exit
 Psh can run any binary available on your system `PATH`:
 
 ```bash
-psh> ls -la
-psh> gcc main.c -o main
-psh> python3 script.py
+perxeuss@hostname:~$ ls -la
+perxeuss@hostname:~$ gcc main.c -o main
+perxeuss@hostname:~$ python3 script.py
 ```
 
 **Error handling:** If a command doesn't exist, the shell prints `Command not found!`
@@ -97,10 +124,11 @@ psh> python3 script.py
 **Examples:**
 
 ```bash
-psh> cd ~
-psh> cd ..
-psh> cd /tmp
-psh> cd -          # go back to previous directory
+perxeuss@hostname:~$ cd /tmp
+perxeuss@hostname:/tmp$ cd ~
+perxeuss@hostname:~$ cd -
+perxeuss@hostname:/tmp$ cd ../home
+perxeuss@hostname:/home$
 ```
 
 **Error:** Prints `cd: No such file or directory` if path doesn't exist.
@@ -111,10 +139,8 @@ psh> cd -          # go back to previous directory
 
 **Syntax:** `pwd`
 
-**Examples:**
-
 ```bash
-psh> pwd
+perxeuss@hostname:~/projects$ pwd
 /home/perxeuss/projects
 ```
 
@@ -128,16 +154,14 @@ psh> pwd
 
 - `-n`: Suppress trailing newline
 
-**Examples:**
-
 ```bash
-psh> echo Hello World
+perxeuss@hostname:~$ echo Hello World
 Hello World
 
-psh> echo -n no newline here
-no newline here psh>
+perxeuss@hostname:~$ echo -n no newline
+no newline perxeuss@hostname:~$
 
-psh> echo $HOME
+perxeuss@hostname:~$ echo $HOME
 /home/perxeuss
 ```
 
@@ -147,10 +171,8 @@ psh> echo $HOME
 
 **Syntax:** `env`
 
-Prints all current environment variables.
-
 ```bash
-psh> env
+perxeuss@hostname:~$ env
 PATH=/usr/local/sbin:/usr/local/bin:...
 HOME=/home/perxeuss
 USER=perxeuss
@@ -163,12 +185,9 @@ USER=perxeuss
 
 **Syntax:** `setenv VAR=value` or `setenv VAR value`
 
-**Examples:**
-
 ```bash
-psh> setenv FOO=bar
-psh> setenv FOO bar
-psh> echo $FOO
+perxeuss@hostname:~$ setenv FOO=bar
+perxeuss@hostname:~$ echo $FOO
 bar
 ```
 
@@ -178,12 +197,10 @@ bar
 
 **Syntax:** `unsetenv VAR`
 
-**Examples:**
-
 ```bash
-psh> unsetenv FOO
-psh> echo $FOO
-                   # empty — variable removed
+perxeuss@hostname:~$ unsetenv FOO
+perxeuss@hostname:~$ echo $FOO
+           # empty — variable removed
 ```
 
 ---
@@ -192,16 +209,14 @@ psh> echo $FOO
 
 **Syntax:** `which command`
 
-**Examples:**
-
 ```bash
-psh> which gcc
+perxeuss@hostname:~$ which gcc
 /usr/bin/gcc
 
-psh> which cd
+perxeuss@hostname:~$ which cd
 cd: shell built-in command
 
-psh> which fakecommand
+perxeuss@hostname:~$ which fakecommand
 fakecommand not found
 ```
 
@@ -224,15 +239,13 @@ Kills all active background jobs and exits cleanly.
 Each command runs in its own process. `stdout` of one is wired to `stdin` of the
 next. Ctrl-C and Ctrl-Z affect the **entire pipeline group**, not just the last process.
 
-**Examples:**
-
 ```bash
-psh> cat /etc/passwd | grep root | wc -l
+perxeuss@hostname:~$ cat /etc/passwd | grep root | wc -l
 2
 
-psh> ls -la | sort | head -5
+perxeuss@hostname:~$ ls -la | sort | head -5
 
-psh> cat file.txt | grep "error" | sort | uniq > errors.txt
+perxeuss@hostname:~$ cat file.txt | grep "error" | sort | uniq > errors.txt
 ```
 
 ---
@@ -241,14 +254,10 @@ psh> cat file.txt | grep "error" | sort | uniq > errors.txt
 
 **Syntax:** `command < filename`
 
-**Examples:**
-
 ```bash
-psh> sort < data.txt
-psh> wc -l < file.txt
+perxeuss@hostname:~$ sort < data.txt
+perxeuss@hostname:~$ wc -l < file.txt
 ```
-
-**Error:** Prints error if file doesn't exist.
 
 ---
 
@@ -256,34 +265,23 @@ psh> wc -l < file.txt
 
 **Syntax:** `command > filename` or `command >> filename`
 
-**Examples:**
-
 ```bash
-# Overwrite
-psh> echo "Hello" > output.txt
-
-# Append
-psh> echo "World" >> output.txt
-
-# Redirect command output
-psh> ls -la > listing.txt
+perxeuss@hostname:~$ echo "Hello" > output.txt
+perxeuss@hostname:~$ echo "World" >> output.txt
+perxeuss@hostname:~$ ls -la > listing.txt
 ```
 
 - `>` creates or overwrites the file
 - `>>` appends to the file
 
-**Error:** `Unable to create file for writing` if file cannot be created.
-
 ---
 
 #### Combined Redirection
 
-**Examples:**
-
 ```bash
-psh> cat < input.txt > output.txt
-psh> cat < input.txt | grep "pattern" > results.txt
-psh> ls | sort > sorted_list.txt
+perxeuss@hostname:~$ cat < input.txt > output.txt
+perxeuss@hostname:~$ cat < input.txt | grep "pattern" > results.txt
+perxeuss@hostname:~$ ls | sort > sorted_list.txt
 ```
 
 ---
@@ -292,17 +290,13 @@ psh> ls | sort > sorted_list.txt
 
 **Syntax:** `command1 ; command2 ; ... ; commandN`
 
-Executes commands in order, waiting for each to finish before starting the next.
-
-**Examples:**
-
 ```bash
-psh> echo "First" ; echo "Second" ; echo "Third"
+perxeuss@hostname:~$ echo "First" ; echo "Second" ; echo "Third"
 First
 Second
 Third
 
-psh> cd /tmp ; ls ; pwd
+perxeuss@hostname:/tmp$ cd ~ ; ls ; pwd
 ```
 
 ---
@@ -311,20 +305,14 @@ psh> cd /tmp ; ls ; pwd
 
 **Syntax:** `command &`
 
-Forks the command but doesn't wait — shell returns prompt immediately.
-Completed background jobs are reported before the next prompt.
-
-**Examples:**
-
 ```bash
-psh> sleep 10 &
-psh>                    # prompt returns immediately
+perxeuss@hostname:~$ sleep 10 &
+perxeuss@hostname:~$            # prompt returns immediately
 
-psh> make build &
-psh> cat file.txt | grep "error" | wc -l &
+perxeuss@hostname:~$ make build &
 ```
 
-**Completion messages:**
+Completion messages appear before the next prompt:
 
 ```
 sleep with pid 12345 exited normally
@@ -335,22 +323,23 @@ gcc with pid 12346 exited abnormally
 
 ### Environment Variable Expansion
 
-Variables prefixed with `$` are expanded before execution across all commands:
+`$VAR` is expanded before execution across all commands, not just builtins:
 
 ```bash
-psh> echo $HOME
+perxeuss@hostname:~$ echo $HOME
 /home/perxeuss
 
-psh> ls $HOME
+perxeuss@hostname:~$ ls $HOME
 
-psh> cd $HOME/projects
+perxeuss@hostname:~$ cd $HOME/projects
+perxeuss@hostname:~/projects$
 ```
 
 ---
 
 ### Command History
 
-Psh saves every command to `~/.Psh_history` automatically and loads it on startup.
+Psh saves every command to `~/.Psh_history` and loads it on startup.
 
 **Features:**
 
@@ -360,12 +349,12 @@ Psh saves every command to `~/.Psh_history` automatically and loads it on startu
 - Commands containing `log` as a token are not stored
 
 ```bash
-psh> echo hello
-psh> ls -la
-psh> pwd
+perxeuss@hostname:~$ echo hello
+perxeuss@hostname:~$ ls -la
+perxeuss@hostname:~$ pwd
 
 # View saved history
-psh> cat ~/.Psh_history
+perxeuss@hostname:~$ cat ~/.Psh_history
 echo hello
 ls -la
 pwd
@@ -380,9 +369,9 @@ pwd
 Interrupts and terminates the current foreground process or pipeline.
 
 ```bash
-psh> sleep 100
+perxeuss@hostname:~$ sleep 100
 ^C
-psh>               # shell continues, sleep is killed
+perxeuss@hostname:~$       # shell continues, sleep is killed
 ```
 
 For pipelines, the **entire process group** is killed — not just one process.
@@ -394,10 +383,10 @@ For pipelines, the **entire process group** is killed — not just one process.
 Stops the current foreground process and moves it to the background job list.
 
 ```bash
-psh> sleep 100
+perxeuss@hostname:~$ sleep 100
 ^Z
 [1] Stopped sleep with pid 12345
-psh>               # shell continues, sleep is suspended
+perxeuss@hostname:~$       # shell continues, sleep is suspended
 ```
 
 ---
@@ -407,13 +396,24 @@ psh>               # shell continues, sleep is suspended
 Exits the shell.
 
 ```bash
-psh> [Ctrl-D]
+perxeuss@hostname:~$ [Ctrl-D]
 logout
 ```
 
 ---
 
 ## Internals
+
+### Dynamic Prompt Generation
+
+The prompt is not a static string — it is recomputed on every iteration of the shell
+loop using live system calls. `gethostname()` fetches the machine name, `getenv("USER")`
+fetches the current user, and `getcwd()` fetches the current working directory.
+
+The `~` substitution compares the current path against the home directory recorded
+at shell startup. If the path starts with the home prefix, that prefix is replaced
+with `~`. This handles subdirectories correctly — `~/projects/src` shows as
+`~/projects/src`, not just `~`.
 
 ### Process Groups and Terminal Control
 
@@ -474,7 +474,7 @@ Psh-shell/
 │   ├── builtins.c      # cd, echo, env, which, setenv, etc.
 │   ├── parser.c        # Syntax validation
 │   ├── history.c       # Command history load/save
-│   ├── prompt.c        # Prompt rendering
+│   ├── prompt.c        # Dynamic prompt with ~ substitution
 │   └── helpers.c       # Shared utilities
 ├── include/            # Header files
 ├── Makefile
@@ -497,6 +497,6 @@ Psh-shell/
 
 - **Compiler:** GCC with C11 standard
 - **Platform:** Linux (Ubuntu 22.04+)
-- **System calls used:** `fork`, `execvp`, `waitpid`, `pipe`, `dup2`, `open`, `setpgid`, `tcsetpgrp`, `sigaction`, `kill`, `getcwd`, `chdir`
+- **System calls used:** `fork`, `execvp`, `waitpid`, `pipe`, `dup2`, `open`, `setpgid`, `tcsetpgrp`, `sigaction`, `kill`, `getcwd`, `gethostname`, `chdir`
 - Modular design with clear separation of concerns
 - Proper resource cleanup and job termination on exit
