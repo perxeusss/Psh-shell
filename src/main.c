@@ -6,6 +6,7 @@
 #include "../include/prompt.h"  
 #include "../include/shell.h"
 #include "../include/history.h"
+#include "../include/input.h"
 
 
 #include<string.h>
@@ -17,7 +18,7 @@
 shell_state global_shell_state ;
 
 static void kill_all(shell_state *st) {
-    
+    input_disable_raw();
     pid_t g = signals_get_fg_pgid();
     if (g > 0) kill(-g, SIGKILL);
 
@@ -32,24 +33,23 @@ void shell_loop() {
     // printf("Welcome to Psh shell!\n") ;
 
     char *line = NULL;
-    size_t cap = 0 ;
+    // size_t cap = 0 ;
 
     for(;;) {
         jobs_check(&global_shell_state) ;
         show_prompt(&global_shell_state);
         fflush(stdout) ;
 
-        ssize_t n = getline(&line, &cap, stdin);
-
-        if (n < 0) {
+        char *raw = input_read_line(&global_shell_state);
+        if (!raw) {
             printf("logout\n");
             kill_all(&global_shell_state);
             break;
         }
-
-        while(n > 0 && (line[n - 1] == '\n' || line[n - 1] == '\r')) {
-            line[--n] = '\0';
-        }
+        if (!line) line = malloc(2048);
+        strncpy(line, raw, 2047);
+        line[2047] = '\0';
+        // ssize_t n = strlen(line);
 
         jobs_check(&global_shell_state) ;
         if(line[0] == '\0') continue ;
@@ -71,6 +71,7 @@ void shell_loop() {
 
 int main() {
     // printf("Starting Psh shell...\n") ;
+    atexit(input_disable_raw); 
     init_prompt(&global_shell_state);
 
     global_shell_state.prev[0] = '\0';
