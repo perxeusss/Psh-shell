@@ -22,7 +22,8 @@ void norm_and_and(const char *in, char *out, size_t sz){
     size_t j = 0;
     for(size_t i = 0; in[i] && j + 1 < sz; i++, j++) {
         if(in[i] == '&' && in[i + 1] == '&') {
-            out[j] = ';', i++ ;
+            out[j] = ';';
+            i++ ;
         } else {
             out[j] = in[i];
         }
@@ -42,10 +43,10 @@ int run_sequence(const char *line) {
 
     for(int i = 0 ; i < n; i++) {
         if(buf[i] == ';' || buf[i] == '&') {
+            bg[cnt] = (buf[i] == '&') ;
             buf[i] = '\0' ;
-            cmd[cnt] = buf + st ;
+            cmd[cnt++] = buf + st ;
             st = i + 1 ;
-            bg[cnt++] = (buf[i] == '&') ;
         }
     }
     if(st <= n) {

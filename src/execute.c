@@ -9,6 +9,7 @@
 #include<string.h>
 #include<sys/wait.h>
 #include<fcntl.h>
+#include<ctype.h>
 
 #ifndef MAX_INFILES
 #  define MAX_INFILES   8
@@ -17,6 +18,35 @@
 #ifndef MAX_OUTFILES
 #  define MAX_OUTFILES  8
 #endif
+
+
+static void expand_vars(char *cmd, char *out, size_t sz) {
+    char *w = out;
+    char *end = out + sz - 1;
+
+    while (*cmd && w < end) {
+        if (*cmd == '$') {
+            cmd++;
+            char var[128];
+            int vi = 0;
+            while (*cmd && (isalnum((unsigned char)*cmd) || *cmd == '_') && vi < 127)
+                var[vi++] = *cmd++;
+            var[vi] = '\0';
+
+            if (vi > 0) {
+                const char *val = getenv(var);
+                if (val) {
+                    while (*val && w < end) *w++ = *val++;
+                }
+            } else {
+                *w++ = '$'; 
+            }
+        } else {
+            *w++ = *cmd++;
+        }
+    }
+    *w = '\0';
+}
 
 static void trim(char *s) {
     int n = (int)strlen(s) ;
@@ -78,8 +108,11 @@ static pid_t run_single(char *cmd, int in_fd, int out_fd, int wait_fg, int bg_de
     trim(cmd) ;
     if(cmd[0] == '\0') return -1 ;
 
+    char expanded[2048];
+    expand_vars(cmd, expanded, sizeof(expanded));
+
     char *argv[64] ;
-    int argc = split_argv(cmd, argv, 64) ;
+    int argc = split_argv(expanded, argv, 64) ;
 
     if (argc == 0 || argv[0] == NULL) {
         _exit(0);
@@ -206,9 +239,13 @@ int execute_command(char *line, int wait_fg, pid_t  *first_pid) {
                 in_fd = fds[0] ;
             } 
         }
-        if (wait_fg) { tcsetpgrp(STDIN_FILENO, getpgrp()); signals_set_fg_pgid(-1,NULL); }
+        // if (wait_fg) { tcsetpgrp(STDIN_FILENO, getpgrp()); signals_set_fg_pgid(-1,NULL); }
         if (wait_fg && pg > 0) {
-            int status;
+            pid_t grp = pg;
+            signals_set_fg_pgid(grp, parts[0]);   
+            tcsetpgrp(STDIN_FILENO, grp);     
+
+            int status = 0 ;
     
             while (waitpid(-pg, &status, WUNTRACED) > 0) {
                 if (WIFSTOPPED(status)) break;      

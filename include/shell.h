@@ -4,8 +4,6 @@
 #include <limits.h>
 #include <sys/types.h>
 
-#define PATH_MAX 4096
-
 #define LOG_SIZE 15
 #define MAX_JOBS 128
 

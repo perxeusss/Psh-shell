@@ -20,22 +20,22 @@ static const char *name_of(const char *s) {
 }
 
 int jobs_add(shell_state *st, pid_t pid, char *cmd) {
-    if(st -> next_job_id >= MAX_JOBS) {
-        fprintf(stderr, "Maximum number of background jobs reached.\n") ;
-        return -1 ;
-    }
-    for(int i = 0 ; i < MAX_JOBS ; i++) {
-        if(st -> jobs[i].active) continue ;
+    for(int i = 0; i < MAX_JOBS; i++) {
+        if(st->jobs[i].active) continue;
 
-        st -> jobs[i].active = 1 ;
-        st -> jobs[i].pid = pid ;
-        st -> jobs[i].state = JOB_RUNNING ;
-        strncpy(st -> jobs[i].cmd, cmd, sizeof(st->jobs[i].cmd) -1);
-        st -> jobs[i].cmd[sizeof(st->jobs[i].cmd) - 1] = '\0' ;
-        st -> jobs[i].id = st -> next_job_id++ ;        
-        return st -> jobs[i].id ;
+        st->jobs[i].active = 1;
+        st->jobs[i].pid    = pid;
+        st->jobs[i].pgid   = pid;   // pgid = pid since each job is its own group leader
+        st->jobs[i].state  = JOB_RUNNING;
+        st->jobs[i].id     = st->next_job_id++;
+
+        strncpy(st->jobs[i].cmd, cmd, sizeof(st->jobs[i].cmd) - 1);
+        st->jobs[i].cmd[sizeof(st->jobs[i].cmd) - 1] = '\0';
+
+        return st->jobs[i].id;
     }
-    return -1 ;
+    fprintf(stderr, "Maximum number of background jobs reached.\n");
+    return -1;
 }
 
 void jobs_check(shell_state *st) {

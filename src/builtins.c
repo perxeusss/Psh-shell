@@ -91,19 +91,8 @@ int command_echo(char **args, char **env) {
     }
 
     for (; args[i]; i++) {
-
-        if (args[i][0] == '$') {
-            char *val = env ?
-                my_getenv(args[i] + 1, env) :
-                getenv(args[i] + 1);
-
-            if (val)
-                fputs(val, stdout);
-        } else {
-            fputs(args[i], stdout);
-        }
-        if (args[i + 1])
-            putchar(' ');
+        fputs(args[i], stdout);
+        if (args[i + 1]) putchar(' ');
     }
     if (newline)
         putchar('\n');
