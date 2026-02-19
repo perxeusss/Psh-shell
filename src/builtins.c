@@ -81,6 +81,7 @@ int command_pwd(void) {
 }
 
 int command_echo(char **args, char **env) {
+    (void) env ;
 
     int newline = 1;
     size_t i = 1;
