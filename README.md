@@ -404,60 +404,9 @@ logout
 
 ## Internals
 
-### Dynamic Prompt Generation
-
-The prompt is not a static string — it is recomputed on every iteration of the shell
-loop using live system calls. `gethostname()` fetches the machine name, `getenv("USER")`
-fetches the current user, and `getcwd()` fetches the current working directory.
-
-The `~` substitution compares the current path against the home directory recorded
-at shell startup. If the path starts with the home prefix, that prefix is replaced
-with `~`. This handles subdirectories correctly — `~/projects/src` shows as
-`~/projects/src`, not just `~`.
-
-### Process Groups and Terminal Control
-
-Every command (and every pipeline) runs in its own process group via `setpgid`.
-Before waiting on a foreground job, the shell hands terminal control to that group
-with `tcsetpgrp`. When the job finishes or stops, the shell reclaims the terminal.
-
-The double-`setpgid` pattern is used — called in both parent and child after `fork` —
-to close the race window where a signal arrives before the process group is fully set up.
-
-### Signal Handling Without SA_RESTART
-
-Signal handlers use `sigaction` **without** `SA_RESTART`. This is intentional —
-`SA_RESTART` causes interrupted system calls like `waitpid` to silently restart,
-making the shell appear completely unresponsive to Ctrl-C and Ctrl-Z. Without it,
-signals interrupt blocking calls and the shell handles them correctly.
-
-`SIGINT` and `SIGTSTP` are forwarded from the shell's handlers to the foreground
-process group. When no foreground job is running, they are ignored. The shell itself
-ignores `SIGQUIT`, `SIGTTOU`, and `SIGTTIN`.
-
-### Pipeline Implementation
-
-Each stage runs in a separate child process connected by `pipe()` file descriptors:
-
-1. Parent creates a pipe before forking each stage
-2. `stdout` of stage N is wired to `stdin` of stage N+1 via `dup2`
-3. Parent closes all pipe ends after forking (prevents read end blocking forever)
-4. Parent waits on the **entire process group** with `waitpid(-pgid, WUNTRACED)`
-
-This means Ctrl-Z correctly suspends every process in the pipeline, not just the last one.
-
-### Job Table
-
-Background jobs are tracked in a fixed-size table. Each entry stores PID, process
-group ID, command name, and state (running/stopped). The shell polls with
-`waitpid(WNOHANG)` before every prompt so finished jobs are reported without blocking.
-On exit, `SIGKILL` is sent to all tracked process groups to prevent orphan processes.
-
-### Parser
-
-Commands go through a recursive descent parser before any process is forked.
-It validates pipelines, redirection targets, and sequencing operators. Bad syntax
-is rejected early with a `Syntax error` message — no partial execution on malformed input.
+Detailed architecture and implementation notes — including execution flow, data
+structures, the double-`setpgid` race condition fix, and signal handling design —
+are available in [docs/INTERNALS.md](docs/INTERNALS.md).
 
 ---
 
@@ -477,6 +426,8 @@ Psh-shell/
 │   ├── prompt.c        # Dynamic prompt with ~ substitution
 │   └── helpers.c       # Shared utilities
 ├── include/            # Header files
+├── docs/
+│   └── INTERNALS.md    # Architecture and implementation deep dive
 ├── Makefile
 └── README.md
 ```
